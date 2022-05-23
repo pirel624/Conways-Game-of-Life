@@ -131,6 +131,50 @@ struct stated_vector2
     if((this->x == operand2.x) && (this->y == operand2.y) && (this->state == operand2.state)){return true;}else{return false;}}
 };
 
+
+std::vector<vector2> ParsePattern(std::string FileName)
+{
+    SDL_Surface* canvas = NULL;
+    while(true)
+    {
+        canvas = IMG_Load(FileName.c_str());
+        if(canvas != NULL){break;}
+    }
+    SDL_LockSurface(canvas);
+    int image_width = canvas->w;
+    int image_height = canvas->h;
+    int byte_per_pixel = canvas->format->BytesPerPixel;
+    int byte_per_row = canvas->pitch;
+    int image_size = byte_per_row * image_height;
+    Uint8* pixels_begin_pointer = (Uint8*)(canvas->pixels);
+    std::vector<Uint8*> pixels_pointer_bucket;
+    for(int y = 0; y < image_height; y++)
+    {
+        for(int x = 0; x < image_width; x++)
+        {
+            pixels_pointer_bucket.push_back(pixels_begin_pointer + y * byte_per_row + x * byte_per_pixel);   // this access the "bytes" at x,y
+        }
+    }
+    std::vector<vector2> Pattern;
+    int counter = 0;
+    for(Uint8* pixel_pointer: pixels_pointer_bucket)
+    {
+        counter++;
+        Uint8 r, g, b;
+        SDL_GetRGB(*pixel_pointer, canvas->format, &r, &g, &b);
+        if(r == 0 && g == 0 && b == 0)
+        {
+            vector2 buffer;
+            buffer.x = counter % image_width;
+            buffer.y = counter / image_width + 1;  // floor division, i added one so that the first row will be marked as y = 1 instead of y = 0
+            Pattern.push_back(buffer);
+        }
+    }
+    SDL_FreeSurface(canvas);
+    return Pattern;
+}
+
+
 int main(int argc, char* args[])
 {   
     SDL_Init(SDL_INIT_EVERYTHING);
@@ -178,8 +222,13 @@ int main(int argc, char* args[])
     set<stated_vector2> automaton_changes;
     set<vector2> dead_automaton;
 
-    vector2 buffer;
 
+    // Starting Pattern
+    for(vector2 &buffer: ParsePattern("pattern.bmp"))
+    {
+        automaton_location.insert(buffer);
+    }
+    /*
     buffer.x = 10; buffer.y = 10;
     automaton_location.insert(buffer);
     buffer.x = 11; buffer.y = 10;
@@ -190,6 +239,7 @@ int main(int argc, char* args[])
     automaton_location.insert(buffer);
     buffer.x = 11; buffer.y = 8;
     automaton_location.insert(buffer);
+    */
 
     while(true)
     {
@@ -433,9 +483,9 @@ int main(int argc, char* args[])
 
 
         SDL_Rect DimensionBuffer;
-        SDL_SetRenderDrawColor(RENDERER, 100, 100, 100, 255);
+        SDL_SetRenderDrawColor(RENDERER, rand() % 256, rand() % 256, rand() % 256, 255);
         SDL_RenderClear(RENDERER);
-        SDL_SetRenderDrawColor(RENDERER, 0, 0, 0, 255);
+        SDL_SetRenderDrawColor(RENDERER, rand() % 256, rand() % 256, rand() % 256, 255);
         for(int n = 0; n < automaton_location.get_data().size(); n++)
         {
             DimensionBuffer.x = (automaton_location.access(n).x - 0) * PIXEL_WIDTH;
@@ -445,7 +495,7 @@ int main(int argc, char* args[])
             SDL_RenderFillRect(RENDERER, &DimensionBuffer);
         }
         SDL_RenderPresent(RENDERER);
-        SDL_Delay(100);
+        SDL_Delay(10);
     }
 
     SDL_DestroyWindow(WINDOW);
